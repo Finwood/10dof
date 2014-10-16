@@ -32,8 +32,7 @@ int main(void) {
 
 	TCCR0A = (1 << WGM01) | (0 << WGM00); // CTC Mode, p.99
 	TCCR0B = (1 << CS02) | (0 << CS01) | (1 << CS00); // 1024 prescaler
-	OCR0A = 156; // ~100Hz
-//	OCR0A = 100;
+	OCR0A = 78; // ~200Hz
 	TIMSK0 = (0 << TOIE0) | (1 << OCIE0A); // no overflow interrupt, interrupt on compare match
 
 	uartInit();
@@ -45,12 +44,8 @@ int main(void) {
 //	ulen = sprintf(ubuf, "Gyro \"who-am-i\": 0x%02X\r\n", twiReceive(L3G_WHO_AM_I)); uartSendMultiple(ubuf, ulen);
 
 
-//	twiSetVal(L3G_CTRL_REG3, 1 << 7); // enable INT1
-//	twiSetVal(L3G_INT1_CFG, 1 << 5); // interrupt on Z High event
 	twiSetVal(L3G_CTRL_REG4, 1 << 7); // enable Block Data Update
-//	twiSetVal(L3G_INT1_TSH_ZH, 0x00); // 1 dps
-//	twiSetVal(L3G_INT1_TSH_ZL, 0x72); // 1 dps
-	twiSetVal(L3G_CTRL_REG1, 0b00001100); // 100Hz, cut-off 12.5, switch on, enable z-axis only
+	twiSetVal(L3G_CTRL_REG1, 0b01001100); // 200Hz, cut-off 12.5, switch on, enable z-axis only
 
 
 	while (1);
@@ -76,13 +71,13 @@ ISR (TIMER0_COMPA_vect) {
 	static uint8_t z_l, z_h, status;
 
 	status = twiReceive(L3G_STATUS_REG);// & 0x0F; // filtering for DA
-//	if (status) {
+	if (status & 0x0C) {
 		z_l = twiReceive(L3G_OUT_Z_L);
 		z_h = twiReceive(L3G_OUT_Z_H);
 
 		z = (z_h << 8) | z_l;
 		ulen = sprintf(ubuf, "%02X: %i\r\n", status, z); uartSendMultiple(ubuf, ulen);
-//	}
+	}
 
 /*	if (!(twiReceive(L3G_STATUS_REG) & 0x0F)) {
 		PORTD ^= (1 << PD4);
