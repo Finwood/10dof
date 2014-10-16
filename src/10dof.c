@@ -27,12 +27,14 @@ int main(void) {
 //	EICRA |= (1 << ISC01) | (1 << ISC00);
 //	EIMSK |= (1 << INT0);
 
-	// set LED pin as output, set high
+	// set LED pin as output
 	DDRD |= (1 << PD4);
-	PORTD |= (1 << PD4);
 
+	TCCR0A = (1 << WGM01) | (0 << WGM00); // CTC Mode, p.99
 	TCCR0B = (1 << CS02) | (0 << CS01) | (1 << CS00); // 1024 prescaler
-	TIMSK0 = (1 << TOIE0);
+//	OCR0A = 156; // ~100Hz
+	OCR0A = 100;
+	TIMSK0 = (0 << TOIE0) | (1 << OCIE0A); // no overflow interrupt, interrupt on compare match
 
 	uartInit();
 	twiInit();
@@ -65,17 +67,40 @@ int main(void) {
 
 ISR (TIMER0_OVF_vect) {
 	static uint8_t postscaler = 0;
-	static uint8_t z_l, z_h;
+	static uint8_t z_l, z_h, status;
 	if (++postscaler >= 61) {
 		postscaler = 0;
 		PORTD ^= (1 << PD4);
 
+		status = twiReceive(L3G_STATUS_REG) & 0x0F; // filtering for DA
 		z_h = twiReceive(L3G_OUT_Z_H);
 		z_l = twiReceive(L3G_OUT_Z_L);
 
 		z = (z_h << 8) | z_l;
-		ulen = sprintf(ubuf, "%02X %02X %i\r\n", z_h, z_l, z); uartSendMultiple(ubuf, ulen);
+		ulen = sprintf(ubuf, "%02X: %02X %02X %i\r\n", status, z_h, z_l, z); uartSendMultiple(ubuf, ulen);
 	}
+}
+
+ISR (TIMER0_COMPA_vect) {
+	static uint8_t z_l, z_h, status;
+
+	status = twiReceive(L3G_STATUS_REG) & 0x0F; // filtering for DA
+	if (status) {
+		z_h = twiReceive(L3G_OUT_Z_H);
+		z_l = twiReceive(L3G_OUT_Z_L);
+
+		z = (z_h << 8) | z_l;
+		ulen = sprintf(ubuf, "%X: %i\r\n", status, z); uartSendMultiple(ubuf, ulen);
+	}
+
+/*	if (!(twiReceive(L3G_STATUS_REG) & 0x0F)) {
+		PORTD ^= (1 << PD4);
+	}*/
+/*	static uint8_t postscaler = 0;
+	if (++postscaler >= 50) {
+		postscaler = 0;
+		PORTD ^= (1 << PD4);
+	}*/
 }
 
 /*ISR (INT0_vect) {
