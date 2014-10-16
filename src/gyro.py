@@ -1,15 +1,10 @@
 #!/usr/bin/python2.7
 # -*- codung: utf-8 -*-
 
+from pandas import DataFrame, Series
+import pandas as ps
+import numpy as np
+
 from sys import argv
-import re
 
-# [2014-10-16 12:13:32.311] C: -22
-preg = re.compile('\[([^\]]+)\] (0|C): (-?\d+)')
-print ';'.join(["'%s'" %item for item in ('time', 'status', 'value')])
-
-for line in open(argv[1]):
-	m = preg.match(line)
-	if m:
-		print ';'.join(["'%s'" %item for item in m.groups()])
-
+pd.read_csv('06.log.csv', skiprows=50, nrows=100, names=['time', 'status', 'value'], parse_dates=[0], index_col=0)

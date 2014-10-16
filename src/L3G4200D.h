@@ -32,6 +32,15 @@
 #define	L3G_INT1_TSH_ZL		0x37
 #define	L3G_INT1_DURATION	0x38
 
+#define L3G_XDA		0x01
+#define L3G_YDA		0x02
+#define L3G_ZDA		0x04
+#define L3G_XYZDA	0x08
+#define L3G_XOR		0x10
+#define L3G_YOR		0x20
+#define L3G_ZOR		0x40
+#define L3G_XYZOR	0x80
+
 
 #endif // __L3G4200D_H__
 
