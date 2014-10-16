@@ -1,6 +1,12 @@
 10dof.geany
-doc/*
-i2cdevlib/*
-src/*.(o|lst|elf|hex|lss|map|sym)
+doc/
+i2cdevlib/
+src/*.o
+src/*.lst
+src/*.elf
+src/*.hex
+src/*.lss
+src/*.map
+src/*.sym
 src/.dep/
 
