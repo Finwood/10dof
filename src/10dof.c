@@ -67,26 +67,18 @@ ISR (TIMER0_OVF_vect) {
 	}
 }
 
+char buf[7];
+char status;
+uint8_t zh, zl;
 ISR (TIMER0_COMPA_vect) {
-	static uint8_t z_l, z_h, status;
+	status = twiReceive(L3G_STATUS_REG);
+	if (status & L3G_ZDA) {
+		zl = twiReceive(L3G_OUT_Z_L);
+		zh = twiReceive(L3G_OUT_Z_H);
 
-	status = twiReceive(L3G_STATUS_REG);// & 0x0F; // filtering for DA
-	if (status & 0x0C) {
-		z_l = twiReceive(L3G_OUT_Z_L);
-		z_h = twiReceive(L3G_OUT_Z_H);
-
-		z = (z_h << 8) | z_l;
-		ulen = sprintf(ubuf, "%02X: %i\r\n", status, z); uartSendMultiple(ubuf, ulen);
+		sprintf(buf, "%02X%02X%02X\n", status, zh, zl);
+		uartSendMultiple(buf, 7);
 	}
-
-/*	if (!(twiReceive(L3G_STATUS_REG) & 0x0F)) {
-		PORTD ^= (1 << PD4);
-	}*/
-/*	static uint8_t postscaler = 0;
-	if (++postscaler >= 50) {
-		postscaler = 0;
-		PORTD ^= (1 << PD4);
-	}*/
 }
 
 /*ISR (INT0_vect) {

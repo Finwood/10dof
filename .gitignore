@@ -9,4 +9,6 @@ src/*.lss
 src/*.map
 src/*.sym
 src/.dep/
+*.csv
+*.log
 
