@@ -1,0 +1,6 @@
+10dof.geany
+doc/*
+i2cdevlib/*
+src/*.(o|lst|elf|hex|lss|map|sym)
+src/.dep/
+
