@@ -19,8 +19,8 @@
 char ubuf[128];
 uint8_t ulen;
 
-volatile int32_t X = 0, Y = 0, Z = 0;
-volatile int16_t x = 0, y = 0, z = 0;
+//volatile int32_t X = 0, Y = 0, Z = 0;
+//volatile int16_t x = 0, y = 0, z = 0;
 
 int main(void) {
 	// enable INT0 for rising edge
@@ -45,13 +45,13 @@ int main(void) {
 
 
 	twiSetVal(L3G_CTRL_REG4, 1 << 7); // enable Block Data Update
-	twiSetVal(L3G_CTRL_REG1, 0b01001100); // 200Hz, cut-off 12.5, switch on, enable z-axis only
+	twiSetVal(L3G_CTRL_REG1, 0b00001111); // 100Hz, cut-off 12.5, switch on, enable all axes
 
 
 	while (1);
 }
 
-ISR (TIMER0_OVF_vect) {
+/*ISR (TIMER0_OVF_vect) {
 	static uint8_t postscaler = 0;
 	static uint8_t z_l, z_h, status;
 	if (++postscaler >= 61) {
@@ -65,19 +65,23 @@ ISR (TIMER0_OVF_vect) {
 		z = (z_h << 8) | z_l;
 		ulen = sprintf(ubuf, "%02X: %02X %02X %i\r\n", status, z_h, z_l, z); uartSendMultiple(ubuf, ulen);
 	}
-}
+}*/
 
-char buf[7];
+char buf[16];
 char status;
-uint8_t zh, zl;
+uint8_t xh, xl, yh, yl, zh, zl;
 ISR (TIMER0_COMPA_vect) {
 	status = twiReceive(L3G_STATUS_REG);
-	if (status & L3G_ZDA) {
+	if (status & L3G_XYZDA) {
+		xl = twiReceive(L3G_OUT_X_L);
+		xh = twiReceive(L3G_OUT_X_H);
+		yl = twiReceive(L3G_OUT_Y_L);
+		yh = twiReceive(L3G_OUT_Y_H);
 		zl = twiReceive(L3G_OUT_Z_L);
 		zh = twiReceive(L3G_OUT_Z_H);
 
-		sprintf(buf, "%02X%02X%02X\n", status, zh, zl);
-		uartSendMultiple(buf, 7);
+		sprintf(buf, "%02X%02X%02X%02X%02X%02X%02X\n", status, xh, xl, yh, yl, zh, zl);
+		uartSendMultiple(buf, 15);
 	}
 }
 
