@@ -9,5 +9,5 @@ src/*.lss
 src/*.map
 src/*.sym
 src/.dep/
-logs/
+src/logs/
 
