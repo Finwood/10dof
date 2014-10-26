@@ -47,7 +47,7 @@ int main(void) {
 	twiSetVal(L3G_CTRL_REG4, 1 << 7); // enable Block Data Update
 	twiSetVal(L3G_CTRL_REG1, 0b00001111); // 100Hz, cut-off 12.5, switch on, enable all axes
 	twiSetVal(L3G_CTRL_REG2, 0b00000000); // High-pass cutoff 8Hz, normal mode
-	twiSetVal(L3G_CTRL_REG5, 0b00000001); // enable High-pass filter for DataReg
+	twiSetVal(L3G_CTRL_REG5, 0b00000000); // disable High-pass filter for DataReg
 
 	while (1);
 }
