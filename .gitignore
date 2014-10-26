@@ -10,4 +10,5 @@ src/*.map
 src/*.sym
 src/.dep/
 src/logs/
+*.pdf
 

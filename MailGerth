@@ -1,0 +1,14 @@
+Sehr geehrter Herr Gerth,
+
+mein Name ist Lasse Fröhner, ich habe im vergangenen Wintersemester bei Ihnen Messtechnik gehört und mit Sven Gutperl zusammen ein wenig an dem Mikrocontrollerseminar gearbeitet.
+
+Aktuell beschäftige ich mich mit den Grundzügen einer Lageregelung für einen Quadrokopter, nämlich an der Messung des Drehwinkels. Dazu habe ich ein Sensor-IC, welches mir digital die Winkelbeschleunigung liefert, aus welcher ich durch zweimaliges Integrieren (bzw. in diesem Fall Aufsummieren) den Drehwinkel berechne. Leider ist das Signal jedoch einerseits leicht verrauscht und hat andererseits einen deutlichen Offset, sodass die berechneten Drehwinkel "weglaufen". Ich habe einen Messschrieb als pdf angehängt, ich denke das Problem ist klar ersichtlich.
+
+Bisher habe ich versucht, das Offset aus den ersten hundert Messwerten zu bestimmen und von den Rohdaten zu subtrahieren, leider sind die Ergebnisse jedoch nicht zufriedenstellend. Auch eine Langzeitmessung ohne Bewegung des Sensors bringt nichts, da der Offset von Mal zu Mal unterschiedlich ist.
+
+Langfristig möchte ich auch Informationen aus einem linearen Beschleunigungssensor und evtl. einem Magnetkompass mit einfließen lassen, um über die Erdbeschleunigung und Magnetfeldinformationen einen ungefähren Nullpunkt für die Lagebestimmung zu ermitteln.
+
+Haben Sie einen Rat für mich, wie ich die Messwerte verarbeiten könnte, um zumindest auf zehn Minuten einigermaßen genau den Drehwinkel zu bestimmen?
+
+Mit freundlichen Grüßen,
+Lasse Fröhner
