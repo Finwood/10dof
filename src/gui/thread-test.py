@@ -7,9 +7,7 @@ import logging
 import threading
 import time
 
-logging.basicConfig(level=logging.DEBUG,
-					format='(%(threadName)-10s) %(message)s',
-					)
+logging.basicConfig(level=logging.DEBUG, format='(%(threadName)-10s) %(message)s')
 
 def wait_for_event(e):
 	"""Wait for the event to be set before doing anything"""
@@ -30,14 +28,10 @@ def wait_for_event_timeout(e, t):
 
 
 e = threading.Event()
-t1 = threading.Thread(name='block',
-					  target=wait_for_event,
-					  args=(e,))
+t1 = threading.Thread(name='block', target=wait_for_event, args=(e,))
 t1.start()
 
-t2 = threading.Thread(name='non-block',
-					  target=wait_for_event_timeout,
-					  args=(e, 2))
+t2 = threading.Thread(name='non-block', target=wait_for_event_timeout, args=(e, 2))
 t2.start()
 
 logging.debug('Waiting before calling Event.set()')

@@ -3,7 +3,7 @@
 from serial import Serial
 from sys import argv
 from time import time
-from struct import unpack
+#from struct import unpack
 
 # find -L /dev/serial/by-id/ -samefile /dev/ttyUSB0
 s = Serial('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9Y55FFV-if00-port0', 38400, timeout=1)
