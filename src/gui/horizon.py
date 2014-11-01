@@ -38,9 +38,8 @@ class Horizon(tk.Canvas):
 		self.redraw()
 
 	def redraw(self):
-		self.tkimg_horizon = ImageTk.PhotoImage(self.img_horizon.rotate(self.roll, resample=Image.BICUBIC))
+		self.tkimg_horizon = ImageTk.PhotoImage(self.img_horizon.crop((95, 95-self.pitch, 305, 305-self.pitch)).rotate(self.roll, resample=Image.BICUBIC))
 		self.itemconfigure('Horizon', image=self.tkimg_horizon)
-		self.coords('Horizon', 140 + self.pitch * sin(self.roll / 180.0 * pi), 140 + self.pitch * cos(self.roll / 180.0 * pi)) # läuft!
 
 		self.tkimg_scale = ImageTk.PhotoImage(self.img_scale.rotate(self.roll, resample=Image.BICUBIC))
 		self.itemconfigure('Scale', image=self.tkimg_scale)
