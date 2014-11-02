@@ -12,12 +12,20 @@ from serial import Serial
 
 from TimerControl import Timer, TimerControl
 
-def hex2int(s, n=None, signedInt=True):
+import matplotlib
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+from numpy import arange
+
+from pandas import Series, DataFrame
+import pandas as pd
+
+def hex2int(s, n=None, signed=True):
 	if set(s).issubset(set('0123456789ABCDEFabcdef')):
 		if n is not None:
 			s = s[:n]
 		res = int(s, 16)
-		if signedInt and res > (2 ** (4*n - 1) - 1):
+		if signed and res > (2 ** (4*n - 1) - 1):
 			res -= (2 ** (4*n))
 		return res
 	else:
@@ -58,8 +66,9 @@ def initThreads():
 	win.title('Artificial Horizon')
 	horizon = Horizon(win)
 	horizon.pack()
-	horizon.grid(row=0, column=1)
 	logging.info('horizon initialized')
+
+	mp = MovingPlot(win)
 
 	q_raw = Queue()
 
@@ -69,46 +78,118 @@ def initThreads():
 	logging.info('UART thread started')
 
 	o = Orientation()
+	o.calibrate(30)
 	t_process = Thread(name="manage raw data", target=o.enqueue_raw_data, args=(q_raw,horizon))
 	t_process.setDaemon(True)
 	t_process.start()
 	logging.info('data processing thread started')
 
 	tim_redraw = Timer(horizon.redraw, delay=0.1, running=True, repeat=True)
-	tctl = TimerControl(updateInterval=0.05, timers=[tim_redraw], running=True)
+	tim_plot = Timer(o.plot, args=mp, delay=1, running=True, repeat=True)
+	tctl = TimerControl(updateInterval=0.05, timers=[tim_redraw, tim_plot], running=True)
 	logging.info('redraw timer initialized')
 
 	logging.info('entering main loop')
 	win.mainloop()
 
 class Orientation():
-	sensitivity = {250: 8.75e-3, 500: 17.5e-3, 2000: 70e-3}
-	def __init__(self):
+	sensitivities = {250: 8.75e-3, 500: 17.5e-3, 2000: 70e-3}
+	def __init__(self, freq=100., fs=500):
 		self.roll = 0.
 		self.pitch = 0.
 		self.yaw = 0.
+		self.freq = freq
+		self.fs = fs
+		self.sensitivity = Orientation.sensitivities[fs]
+
+		self.ctr = 0
+		self.calib_ctr = 0
+		self.calib_goal = 0
+		self.calib_data = ([], [], [])
+
+		self.cx = 0
+		self.cy = 0
+		self.cz = 0
+
+#		self.status = [0]
+		self.x = [0]
+		self.y = [0]
+		self.z = [0]
+
 
 	def enqueue_raw_data(self, src, horizon):
-		freq = 100.
-		fullscale = 500
 		while True:
 			d = src.get() # waiting for data
 
 			logging.debug('data received')
+#			self.ctr += 1
 
-			(status, dy, dx, dz) = (''.join(d[0:2]), hex2int(''.join(d[2:6]), 4), hex2int(''.join(d[6:10]), 4), -hex2int(''.join(d[10:14]), 4))
-			self.roll += dx * Orientation.sensitivity[fullscale] / freq
-			self.pitch += dy * Orientation.sensitivity[fullscale] / freq
-			self.yaw += dz * Orientation.sensitivity[fullscale] / freq
+			(status, dy, dx, dz) = (hex2int(''.join(d[0:2]), signed=False), hex2int(''.join(d[2:6]), 4), hex2int(''.join(d[6:10]), 4), -hex2int(''.join(d[10:14]), 4))
+			dx *= self.sensitivity / self.freq
+			dy *= self.sensitivity / self.freq
+			dz *= self.sensitivity / self.freq
 
-			horizon.set_roll(self.roll)
-			horizon.set_pitch(self.pitch)
+			if self.calib_ctr > 0:
+				self.calib_ctr -= 1
+				if self.calib_ctr == 0:
+					self.cx = mean(self.calib_data[0])
+					self.cy = mean(self.calib_data[1])
+					self.cz = mean(self.calib_data[2])
+					self.reset()
+				else:
+					self.calib_data[0].append(dx)
+					self.calib_data[1].append(dy)
+					self.calib_data[2].append(dz)
+
+#			self.status.append(status)
+			self.x.append(self.x[-1] + dx - self.cx)
+			self.y.append(self.y[-1] + dy - self.cy)
+			self.z.append(self.z[-1] + dz - self.cz)
+
+			if len(self.x) > 1000:
+#				self.status = self.status[-1000:]
+				self.x = self.x[-6000:]
+				self.y = self.y[-6000:]
+				self.z = self.z[-6000:]
+
+#			self.roll += dx
+#			self.pitch += dy
+#			self.yaw += dz
+
+			if not (status & 0xF0):
+				horizon.set_roll(self.x[-1])
+				horizon.set_pitch(self.y[-1])
 
 			src.task_done()
 
+	def plot(self, plot):
+		ax = plot.figure.axes[0]
+		ax.cla()
+		ax.set_xlim(0, 6000)
+#		ax.set_ylim(-180, 180)
+
+#		r = (arange(len(self.x)) - len(self.x)) / self.freq
+		df = DataFrame({'roll': self.x, 'pitch': self.y, 'yaw': self.z})
+		logging.info(df.describe())
+		df.plot(ax=ax, legend=False)
+
+#		ax.plot(r, self.x, 'r-', r, self.y, 'g-', r, self.z, 'b-')
+		plot.draw()
+
+	def calibrate(self, s=10):
+		self.calib_data = ([], [], [])
+		self.calib_ctr = s*self.freq
+		self.calib_goal = s*self.freq
+		logging.info('calibration initialized')
+
+	def reset(self):
+		self.x = [0]
+		self.y = [0]
+		self.z = [0]
+
+
 class Horizon(tk.Canvas):
 	def __init__(self, app, **kwargs):
-		self.app = app
 		tk.Canvas.__init__(self, app, width=280, height=280)
 
 		self.roll = 0
@@ -136,43 +217,27 @@ class Horizon(tk.Canvas):
 			a = -90
 		self.pitch = a
 
-	def roll_step(self, step):
-		self.roll += step
-		self.roll %= 360
-		self.redraw()
-
-	def pitch_step(self, step):
-		self.pitch += step
-		if self.pitch < -90:
-			self.pitch = -90
-		elif self.pitch > 90:
-			self.pitch = 90
-		self.redraw()
-
 	def redraw(self):
 		logging.debug('redraw horizon')
 
-		self.tkimg_horizon = ImageTk.PhotoImage(self.img_horizon.crop((95, 95-self.pitch, 305, 305-self.pitch)).rotate(self.roll, resample=Image.BICUBIC))
+		self.tkimg_horizon = ImageTk.PhotoImage(self.img_horizon.crop((95, 95-(3*self.pitch), 305, 305-(3*self.pitch))).rotate(self.roll, resample=Image.BICUBIC))
 		self.itemconfigure('Horizon', image=self.tkimg_horizon)
 
 		self.tkimg_scale = ImageTk.PhotoImage(self.img_scale.rotate(self.roll, resample=Image.BICUBIC))
 		self.itemconfigure('Scale', image=self.tkimg_scale)
 
-def inc():
-	global horizon, win
-	horizon.roll_step(-1)
-	horizon.pitch_step(1)
-	win.after(10, inc)
+class MovingPlot(matplotlib.backends.backend_tkagg.FigureCanvasTkAgg):
+	def __init__(self, app):
+		matplotlib.use('TkAgg')
 
-def main():
-	global horizon, win
-	win = tk.Tk()
-	win.title('Artificial Horizon')
-	horizon = Horizon(win)
-	horizon.pack()
-	horizon.grid(row=0, column=1)
+		self.fig = Figure(figsize=(10,3), dpi=100)
+		self.splot = self.fig.add_subplot(111)
 
-	inc()
-	win.mainloop()
+		matplotlib.backends.backend_tkagg.FigureCanvasTkAgg.__init__(self, self.fig, master=app)
+		self.show()
+		self.get_tk_widget().pack()
+
+def mean(l):
+	return sum(l) / float(len(l))
 
 initThreads()
