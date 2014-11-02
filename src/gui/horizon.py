@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: UTF-8
 
-from functools import partial
 import Tkinter as tk
 from PIL import Image, ImageTk
 
@@ -11,6 +10,7 @@ import logging
 
 from serial import Serial
 
+from TimerControl import Timer, TimerControl
 
 def hex2int(s, n=None, signedInt=True):
 	if set(s).issubset(set('0123456789ABCDEFabcdef')):
@@ -32,6 +32,8 @@ def listenToSerial(dest):
 		s = Serial('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9Y55FFV-if00-port0', 38400, timeout=1)
 		buf = []
 
+		logging.info('serial communication set up')
+
 		try:
 			while True:
 				c = s.read(1)
@@ -50,25 +52,33 @@ def listenToSerial(dest):
 		pass
 
 def initThreads():
-	logging.basicConfig(level=logging.DEBUG, format='(%(threadName)s) %(message)s')
+	logging.basicConfig(level=logging.INFO, format='(%(threadName)s) %(message)s')
 
 	win = tk.Tk()
 	win.title('Artificial Horizon')
 	horizon = Horizon(win)
 	horizon.pack()
 	horizon.grid(row=0, column=1)
+	logging.info('horizon initialized')
 
 	q_raw = Queue()
 
 	t_uart = Thread(name="listen to UART", target=listenToSerial, args=(q_raw,))
 	t_uart.setDaemon(True)
 	t_uart.start()
+	logging.info('UART thread started')
 
 	o = Orientation()
 	t_process = Thread(name="manage raw data", target=o.enqueue_raw_data, args=(q_raw,horizon))
 	t_process.setDaemon(True)
 	t_process.start()
+	logging.info('data processing thread started')
 
+	tim_redraw = Timer(horizon.redraw, delay=0.1, running=True, repeat=True)
+	tctl = TimerControl(updateInterval=0.05, timers=[tim_redraw], running=True)
+	logging.info('redraw timer initialized')
+
+	logging.info('entering main loop')
 	win.mainloop()
 
 class Orientation():
@@ -99,7 +109,7 @@ class Horizon(tk.Canvas):
 		tk.Canvas.__init__(self, app, width=280, height=280)
 
 		self.roll = 0
-		self.pitch = -90
+		self.pitch = 0
 
 		self.img_horizon = Image.open('img/horizon.png')
 		self.img_frame = Image.open('img/frame.png')

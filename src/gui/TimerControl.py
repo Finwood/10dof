@@ -14,8 +14,8 @@
 # Use (e.g.):
 # 	Create some Timer's, create a TimeControl. Pass the Timer's to TimeControl via __init__ als list or by using TimeControl.append(Timer)
 #		Tell TimeControl to start thread and init timeouts of Timers via TimeControl.restart()
-#		Push more Timers via append or appendS (appendS starts the timer immediately), control their status via Timer.restart()/.stop() and 
-#		stop TimeControl at the end via TimeControl.stop(). This does not stop the Timer's (does not set their running flag to false, so other 
+#		Push more Timers via append or appendS (appendS starts the timer immediately), control their status via Timer.restart()/.stop() and
+#		stop TimeControl at the end via TimeControl.stop(). This does not stop the Timer's (does not set their running flag to false, so other
 #		 TimeControllers using these Timers still work)
 #		Have fun :P
 import threading
@@ -29,15 +29,15 @@ class Timer:
 		""" callback = funktion to call
 			delay = time to wait after timer has started before callback is called (float, in seconds)
 			running = start directly after creation?
-			repeat = call callback on a regular basis 
+			repeat = call callback on a regular basis
 			args = parameters for callback (Something or None, None-> callback(), not callback(None) !)"""
 		self.callback = callback
 		self.delay = delay
 		self.running = False # will be set in restart if running is true
 		self.repeat = repeat
-		self.timeout = 0 
+		self.timeout = 0
 		self.args = args
-		
+
 		if running:
 			self.restart()
 	def __str__(self):
@@ -57,7 +57,7 @@ class Timer:
 		""" Returns timeout """
 		return self.timeout
 	def execute(self, currentTime):
-		""" start callback if time is over, set running to false and restart if repeat=true 
+		""" start callback if time is over, set running to false and restart if repeat=true
 		returns True if thread is still running - False otherwise"""
 		if self.isRunning() and self.getTimeout()<currentTime:
 			self.stop()
@@ -75,16 +75,17 @@ class Timer:
 	def stop(self):
 		""" Stop it. """
 		self.setRunning(False)
-		
+
 class TimerControl(threading.Thread):
 	def __init__(self, updateInterval=0.5, timers=None, running=False):
 		""" Take parameters and start itself if asked for """
 		threading.Thread.__init__(self)
-		
+		self.setDaemon(True)
+
 		self.updateInterval = updateInterval
 		self.timers = timers
 		self.running = False # will be set in restart if running was true
-		
+
 		if running:
 			self.restart()
 	def isRunning(self):
@@ -115,7 +116,7 @@ class TimerControl(threading.Thread):
 				currentTime = time.time() # current time
 				for t in self.timers:
 					t.execute(currentTime)
-					# if you want to remove "finished" timers = timers, that are not running - replace the line above with the two below 
+					# if you want to remove "finished" timers = timers, that are not running - replace the line above with the two below
 					#if not t.execute(currentTime):
 					#	self.timers.remove(t)
 				time.sleep(self.updateInterval) # maybe better than line below :/
@@ -130,7 +131,7 @@ class TimerControl(threading.Thread):
 		return s
 
 
-if __name__ == "__main__":			
+if __name__ == "__main__":
 	""" Some testing, max be removed later - is only executed if this is the mainfile (and not an include) """
 	def end():
 		print "kill!!"
@@ -150,11 +151,11 @@ if __name__ == "__main__":
 	timer2.restart()
 	timemgr.appendS(timer3)
 	print str(timemgr)
-	
+
 	try:
 		time.sleep(4)
 	finally:
 		timemgr.stop() # if aborted (^C) stop timecontrol
-		
+
 	print str(timemgr)
 
