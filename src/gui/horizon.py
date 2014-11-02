@@ -89,10 +89,14 @@ class Horizon(tk.Canvas):
 		self.roll = self.droll%360
 		self.redraw()
 
+	def pitch_step(self, step):
+		self.dpitch += step
+		self.pitch = self.dpitch%360
+		self.redraw()
+
 	def redraw(self):
-		self.tkimg_horizon = ImageTk.PhotoImage(self.img_horizon.rotate(self.roll, resample=Image.BICUBIC))
+		self.tkimg_horizon = ImageTk.PhotoImage(self.img_horizon.crop((95, 95-self.pitch, 305, 305-self.pitch)).rotate(self.roll, resample=Image.BICUBIC))
 		self.itemconfigure('Horizon', image=self.tkimg_horizon)
-		self.coords('Horizon', 140 + self.pitch * sin(self.roll / 180.0 * pi), 140 + self.pitch * cos(self.roll / 180.0 * pi)) # läuft!
 
 		self.tkimg_scale = ImageTk.PhotoImage(self.img_scale.rotate(self.roll, resample=Image.BICUBIC))
 		self.itemconfigure('Scale', image=self.tkimg_scale)
@@ -100,6 +104,7 @@ class Horizon(tk.Canvas):
 def inc():
 	global horizon, app_win
 	horizon.roll_step(-1)
+#	horizon.pitch_step(1)
 	app_win.after(100, inc)
 
 def main():
