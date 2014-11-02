@@ -2,49 +2,66 @@
 # coding: UTF-8
 
 from functools import partial
-try:
-	import tkinter as tk
-except:
-	import Tkinter as tk
+import Tkinter as tk
 from PIL import Image, ImageTk
-from math import sin, cos, pi
 
-import threading
+from threading import Thread
+from Queue import Queue
 import logging
 
 from serial import Serial
 
-valids = set('0123456789ABCDEFabcdef')
-def hexToInt(s, n=2): # signed int
-	global valids
-	if set(s).issubset(valids):
-		res = int(s[:n], 16)
-		if res > (2 ** (4*n - 1) - 1):
+
+def hex2int(s, n=None, signedInt=True):
+	if set(s).issubset(set('0123456789ABCDEFabcdef')):
+		if n is not None:
+			s = s[:n]
+		res = int(s, 16)
+		if signedInt and res > (2 ** (4*n - 1) - 1):
 			res -= (2 ** (4*n))
 		return res
 	else:
 		return 0
 
-def listenToSerial():
+def ts2dt(s):
+	return dt.fromtimestamp(float(s))
+
+def listenToSerial(dest):
 	# find -L /dev/serial/by-id/ -samefile /dev/ttyUSB0
 	s = Serial('/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9Y55FFV-if00-port0', 38400, timeout=1)
 	buf = []
-	global horizon
 
 	try:
-		while 1:
+		while True:
 			c = s.read(1)
 			if c != '':
 				if c == '\n':
 					if len(buf) == 14:
-						f.write("%2s,%i,%i,%i\n" %(''.join(buf[0:2]), hexToInt(''.join(buf[2:6]), 4), hexToInt(''.join(buf[6:10]), 4), hexToInt(''.join(buf[10:14]), 4)))
+						dest.put(buf)
 					buf = []
 				else:
 					buf.append(c)
 	except:
+		pass
+	finally:
 		s.close()
 
-STEP = 5
+def manageRawData(src):
+	# init
+	while True:
+		d = src.get()
+		(status, dx, dy, dz) = (''.join(buf[0:2]), hex2int(''.join(buf[2:6]), 4), hex2int(''.join(buf[6:10]), 4), hex2int(''.join(buf[10:14]), 4))
+		# do something
+		src.task_done()
+
+def initThreads():
+	q_raw = Queue()
+	t_uart = Thread(name="listen to UART", target=listenToSerial, args=(q_raw,))
+	t_uart.setDaemon(True)
+	t_uart.start()
+	t_process = Thread(name="manage raw data", target=manageRawData, args=(q_raw,))
+	t_process.setDaemon(True)
+	t_process.start()
 
 class Horizon(tk.Canvas):
 	def __init__(self, app, **kwargs):
@@ -53,7 +70,7 @@ class Horizon(tk.Canvas):
 
 		self.roll = 0
 		self.droll = 0
-		self.pitch = 30
+		self.pitch = 0
 		self.dpitch = 0
 
 		self.img_horizon = Image.open('img/horizon.png')
@@ -94,9 +111,9 @@ def main():
 	button_frame = tk.Frame(app_win)
 
 	tk.Button(button_frame, text="--->", height=3,
-		command=partial(horizon.roll_step, STEP)).pack(fill='x')
+		command=partial(horizon.roll_step, 5)).pack(fill='x')
 	tk.Button(button_frame, text="<---", height=3,
-		command=partial(horizon.roll_step, -STEP)).pack(fill='x')
+		command=partial(horizon.roll_step, -5)).pack(fill='x')
 	tk.Button(button_frame, text="Beenden", width=40, height=3,
 		command=app_win.destroy).pack()
 
