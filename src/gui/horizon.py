@@ -82,21 +82,24 @@ def initThreads():
 	win.mainloop()
 
 class Orientation():
+	sensitivity = {250: 8.75e-3, 500: 17.5e-3, 2000: 70e-3}
 	def __init__(self):
-		self.roll = 0.0
-		self.pitch = 0.0
-		self.yaw = 0.0
+		self.roll = 0.
+		self.pitch = 0.
+		self.yaw = 0.
 
 	def enqueue_raw_data(self, src, horizon):
+		freq = 100.
+		fullscale = 500
 		while True:
 			d = src.get() # waiting for data
 
 			logging.debug('data received')
 
 			(status, dy, dx, dz) = (''.join(d[0:2]), hex2int(''.join(d[2:6]), 4), hex2int(''.join(d[6:10]), 4), -hex2int(''.join(d[10:14]), 4))
-			self.roll += dx * 8.75e-5
-			self.pitch += dy * 8.75e-5
-			self.yaw += dz * 8.75e-5
+			self.roll += dx * Orientation.sensitivity[fullscale] / freq
+			self.pitch += dy * Orientation.sensitivity[fullscale] / freq
+			self.yaw += dz * Orientation.sensitivity[fullscale] / freq
 
 			horizon.set_roll(self.roll)
 			horizon.set_pitch(self.pitch)
