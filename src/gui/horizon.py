@@ -95,9 +95,9 @@ def initThreads():
 class Orientation():
 	sensitivities = {250: 8.75e-3, 500: 17.5e-3, 2000: 70e-3}
 	def __init__(self, freq=100., fs=500):
-		self.roll = 0.
-		self.pitch = 0.
-		self.yaw = 0.
+#		self.roll = 0.
+#		self.pitch = 0.
+#		self.yaw = 0.
 		self.freq = freq
 		self.fs = fs
 		self.sensitivity = Orientation.sensitivities[fs]
@@ -124,10 +124,10 @@ class Orientation():
 			logging.debug('data received')
 #			self.ctr += 1
 
-			(status, dy, dx, dz) = (hex2int(''.join(d[0:2]), signed=False), hex2int(''.join(d[2:6]), 4), hex2int(''.join(d[6:10]), 4), -hex2int(''.join(d[10:14]), 4))
-			dx *= self.sensitivity / self.freq
-			dy *= self.sensitivity / self.freq
-			dz *= self.sensitivity / self.freq
+			status = hex2int(''.join(d[0:2]), signed=False)
+			dy = hex2int(''.join(d[2:6]), 4) * self.sensitivity / self.freq
+			dx = hex2int(''.join(d[6:10]), 4) * self.sensitivity / self.freq
+			dz = -hex2int(''.join(d[10:14]), 4) * self.sensitivity / self.freq
 
 			if self.calib_ctr > 0:
 				self.calib_ctr -= 1
@@ -142,11 +142,13 @@ class Orientation():
 					self.calib_data[2].append(dz)
 
 #			self.status.append(status)
+
+			# get cumulative sum
 			self.x.append(self.x[-1] + dx - self.cx)
 			self.y.append(self.y[-1] + dy - self.cy)
 			self.z.append(self.z[-1] + dz - self.cz)
 
-			if len(self.x) > 1000:
+			if len(self.x) > 6000:
 #				self.status = self.status[-1000:]
 				self.x = self.x[-6000:]
 				self.y = self.y[-6000:]
@@ -202,6 +204,7 @@ class Horizon(tk.Canvas):
 		self.tkimg_horizon = ImageTk.PhotoImage(self.img_horizon)
 		self.tkimg_frame = ImageTk.PhotoImage(self.img_frame)
 		self.tkimg_scale = ImageTk.PhotoImage(self.img_scale)
+
 		self.create_image(140, 140, image=self.tkimg_horizon, tag='Horizon')
 		self.create_image(140, 140, image=self.tkimg_frame, tag='Frame')
 		self.create_image(140, 140, image=self.tkimg_scale, tag='Scale')
@@ -211,10 +214,10 @@ class Horizon(tk.Canvas):
 
 	def set_pitch(self, a):
 		a = int(a)
-		if a > 90:
-			a = 90
-		elif a < -90:
-			a = -90
+		if a > 30:
+			a = 30
+		elif a < -30:
+			a = -30
 		self.pitch = a
 
 	def redraw(self):
