@@ -78,7 +78,7 @@ def initThreads():
 	logging.info('UART thread started')
 
 	o = Orientation()
-	o.calibrate(30)
+	o.calibrate(10)
 	t_process = Thread(name="manage raw data", target=o.enqueue_raw_data, args=(q_raw,horizon))
 	t_process.setDaemon(True)
 	t_process.start()
@@ -197,6 +197,9 @@ class Horizon(tk.Canvas):
 		self.roll = 0
 		self.pitch = 0
 
+		self.displayed_roll = 0
+		self.displayed_pitch = 0
+
 		self.img_horizon = Image.open('img/horizon.png')
 		self.img_frame = Image.open('img/frame.png')
 		self.img_scale = Image.open('img/scale.png')
@@ -223,11 +226,16 @@ class Horizon(tk.Canvas):
 	def redraw(self):
 		logging.debug('redraw horizon')
 
-		self.tkimg_horizon = ImageTk.PhotoImage(self.img_horizon.crop((95, 95-(3*self.pitch), 305, 305-(3*self.pitch))).rotate(self.roll, resample=Image.BICUBIC))
-		self.itemconfigure('Horizon', image=self.tkimg_horizon)
+		if (self.roll != self.displayed_roll) or (self.pitch != self.displayed_pitch):
+			self.tkimg_horizon = ImageTk.PhotoImage(self.img_horizon.crop((95, 95-(3*self.pitch), 305, 305-(3*self.pitch))).rotate(self.roll, resample=Image.BICUBIC))
+			self.itemconfigure('Horizon', image=self.tkimg_horizon)
+			self.displayed_pitch = self.pitch
 
-		self.tkimg_scale = ImageTk.PhotoImage(self.img_scale.rotate(self.roll, resample=Image.BICUBIC))
-		self.itemconfigure('Scale', image=self.tkimg_scale)
+			if (self.roll != self.displayed_roll):
+				self.tkimg_scale = ImageTk.PhotoImage(self.img_scale.rotate(self.roll, resample=Image.BICUBIC))
+				self.itemconfigure('Scale', image=self.tkimg_scale)
+				self.displayed_roll = self.roll
+
 
 class MovingPlot(matplotlib.backends.backend_tkagg.FigureCanvasTkAgg):
 	def __init__(self, app):
