@@ -10,7 +10,7 @@ import logging
 
 from serial import Serial
 
-from TimerControl import Timer, TimerControl
+#from TimerControl import Timer, TimerControl
 
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -77,24 +77,24 @@ def initThreads():
 	t_uart.start()
 	logging.info('UART thread started')
 
-	o = Orientation()
-	o.calibrate(10)
+	o = Orientation(plot=mp)
+	o.calibrate(60)
 	t_process = Thread(name="manage raw data", target=o.enqueue_raw_data, args=(q_raw,horizon))
 	t_process.setDaemon(True)
 	t_process.start()
 	logging.info('data processing thread started')
 
-	tim_redraw = Timer(horizon.redraw, delay=0.1, running=True, repeat=True)
-	tim_plot = Timer(o.plot, args=mp, delay=1, running=True, repeat=True)
-	tctl = TimerControl(updateInterval=0.05, timers=[tim_redraw, tim_plot], running=True)
-	logging.info('redraw timer initialized')
+#	tim_redraw = Timer(horizon.redraw, delay=0.1, running=True, repeat=True)
+#	tim_plot = Timer(o.plot, delay=1, running=True, repeat=True)
+#	tctl = TimerControl(updateInterval=0.05, timers=[tim_redraw, tim_plot], running=True)
+#	logging.info('redraw timer initialized')
 
 	logging.info('entering main loop')
 	win.mainloop()
 
 class Orientation():
 	sensitivities = {250: 8.75e-3, 500: 17.5e-3, 2000: 70e-3}
-	def __init__(self, freq=100., fs=500):
+	def __init__(self, freq=100., fs=500, plot=None):
 #		self.roll = 0.
 #		self.pitch = 0.
 #		self.yaw = 0.
@@ -116,13 +116,15 @@ class Orientation():
 		self.y = [0]
 		self.z = [0]
 
+		self.plotWindow = plot
+
 
 	def enqueue_raw_data(self, src, horizon):
 		while True:
 			d = src.get() # waiting for data
 
 			logging.debug('data received')
-#			self.ctr += 1
+			self.ctr += 1
 
 			status = hex2int(''.join(d[0:2]), signed=False)
 			dy = hex2int(''.join(d[2:6]), 4) * self.sensitivity / self.freq
@@ -136,12 +138,11 @@ class Orientation():
 					self.cy = mean(self.calib_data[1])
 					self.cz = mean(self.calib_data[2])
 					self.reset()
+					logging.info('calibration values:\nroll:  %f\npitch: %f\nyaw:   %f' %(self.cx, self.cy, self.cz))
 				else:
 					self.calib_data[0].append(dx)
 					self.calib_data[1].append(dy)
 					self.calib_data[2].append(dz)
-
-#			self.status.append(status)
 
 			# get cumulative sum
 			self.x.append(self.x[-1] + dx - self.cx)
@@ -158,25 +159,31 @@ class Orientation():
 #			self.pitch += dy
 #			self.yaw += dz
 
-			if not (status & 0xF0):
-				horizon.set_roll(self.x[-1])
-				horizon.set_pitch(self.y[-1])
+			if self.ctr % 10 == 0: # update horizon
+				if not (status & 0xF0):
+					horizon.set_roll(self.x[-1])
+					horizon.set_pitch(self.y[-1])
+					horizon.redraw()
+
+				if self.ctr % 100 == 0: # update graph
+					self.plot()
 
 			src.task_done()
 
-	def plot(self, plot):
-		ax = plot.figure.axes[0]
-		ax.cla()
-		ax.set_xlim(0, 6000)
-#		ax.set_ylim(-180, 180)
+	def plot(self):
+		if self.plotWindow is not None:
+			ax = self.plotWindow.figure.axes[0]
+			ax.cla()
+			ax.set_xlim(0, 6000)
+#			ax.set_ylim(-180, 180)
 
-#		r = (arange(len(self.x)) - len(self.x)) / self.freq
-		df = DataFrame({'roll': self.x, 'pitch': self.y, 'yaw': self.z})
-		logging.info(df.describe())
-		df.plot(ax=ax, legend=False)
+#			r = (arange(len(self.x)) - len(self.x)) / self.freq
+			df = DataFrame({'roll': self.x, 'pitch': self.y, 'yaw': self.z})
+#			logging.info(df.describe())
+			df.plot(ax=ax, legend=False)
 
-#		ax.plot(r, self.x, 'r-', r, self.y, 'g-', r, self.z, 'b-')
-		plot.draw()
+#			ax.plot(r, self.x, 'r-', r, self.y, 'g-', r, self.z, 'b-')
+			self.plotWindow.draw()
 
 	def calibrate(self, s=10):
 		self.calib_data = ([], [], [])
