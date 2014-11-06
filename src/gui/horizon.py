@@ -10,15 +10,14 @@ import logging
 
 from serial import Serial
 
-#from TimerControl import Timer, TimerControl
-
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from numpy import arange
 
 from pandas import Series, DataFrame
 import pandas as pd
+
+import numpy as np
 
 def hex2int(s, n=None, signed=True):
 	if set(s).issubset(set('0123456789ABCDEFabcdef')):
@@ -78,7 +77,7 @@ def initThreads():
 	logging.info('UART thread started')
 
 	o = Orientation(plot=mp)
-	o.calibrate(60)
+	o.calibrate(10)
 	t_process = Thread(name="manage raw data", target=o.enqueue_raw_data, args=(q_raw,horizon))
 	t_process.setDaemon(True)
 	t_process.start()
@@ -177,7 +176,6 @@ class Orientation():
 			ax.set_xlim(0, 6000)
 #			ax.set_ylim(-180, 180)
 
-#			r = (arange(len(self.x)) - len(self.x)) / self.freq
 			df = DataFrame({'roll': self.x, 'pitch': self.y, 'yaw': self.z})
 #			logging.info(df.describe())
 			df.plot(ax=ax, legend=False)
@@ -257,5 +255,19 @@ class MovingPlot(matplotlib.backends.backend_tkagg.FigureCanvasTkAgg):
 
 def mean(l):
 	return sum(l) / float(len(l))
+
+# http://de.wikipedia.org/wiki/Eulersche_Winkel
+def get_matrix_YPR(yaw, pitch, roll):
+	psi = np.deg2rad(yaw)
+	theta = np.deg2rad(pitch)
+	phi = np.deg2rad(roll)
+	return np.matrix([
+	[np.cos(theta)*np.cos(psi), np.cos(theta)*np.sin(psi), -np.sin(theta)],
+	[np.sin(phi)*np.sin(theta)*np.cos(psi)-np.cos(phi)*np.sin(psi), np.sin(phi)*np.sin(theta)*np.sin(psi)+np.cos(phi)*np.cos(psi), np.sin(phi)*np.cos(theta)],
+	[np.cos(phi)*np.sin(theta)*np.cos(psi)+np.sin(phi)*np.sin(psi), np.cos(phi)*np.sin(theta)*np.sin(psi)-np.sin(phi)*np.cos(psi), np.cos(phi)*np.cos(theta)]])
+def get_matrix_RPY(roll, pitch, yaw):
+	return get_matrix_YPR(yaw, pitch, roll).T
+
+
 
 initThreads()
