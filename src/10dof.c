@@ -44,7 +44,7 @@ int main(void) {
 //	ulen = sprintf(ubuf, "Gyro \"who-am-i\": 0x%02X\r\n", twiReceive(L3G_WHO_AM_I)); uartSendMultiple(ubuf, ulen);
 
 
-	twiSetVal(L3G_CTRL_REG4, 0b10010000); // enable Block Data Update, full scale 500dps
+	twiSetVal(L3G_CTRL_REG4, 0b10100000); // enable Block Data Update, full scale 2000dps
 	twiSetVal(L3G_CTRL_REG1, 0b00001111); // 100Hz, cut-off 12.5, switch on, enable all axes
 	twiSetVal(L3G_CTRL_REG2, 0b00000000); // High-pass cutoff 8Hz, normal mode
 	twiSetVal(L3G_CTRL_REG5, 0b00000000); // disable High-pass filter for DataReg

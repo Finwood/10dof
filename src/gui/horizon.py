@@ -93,10 +93,11 @@ def initThreads():
 
 class Orientation():
 	sensitivities = {250: 8.75e-3, 500: 17.5e-3, 2000: 70e-3}
-	def __init__(self, freq=100., fs=500, plot=None):
-#		self.roll = 0.
-#		self.pitch = 0.
-#		self.yaw = 0.
+	def __init__(self, freq=100., fs=2000, plot=None):
+		self.roll = [0]
+		self.pitch = [0]
+		self.yaw = [0]
+
 		self.freq = freq
 		self.fs = fs
 		self.sensitivity = Orientation.sensitivities[fs]
@@ -126,9 +127,9 @@ class Orientation():
 			self.ctr += 1
 
 			status = hex2int(''.join(d[0:2]), signed=False)
-			dy = hex2int(''.join(d[2:6]), 4) * self.sensitivity / self.freq
-			dx = hex2int(''.join(d[6:10]), 4) * self.sensitivity / self.freq
-			dz = -hex2int(''.join(d[10:14]), 4) * self.sensitivity / self.freq
+			dy = hex2int(''.join(d[2:6]), 4) * self.sensitivity / self.freq - self.cy
+			dx = hex2int(''.join(d[6:10]), 4) * self.sensitivity / self.freq - self.cx
+			dz = -hex2int(''.join(d[10:14]), 4) * self.sensitivity / self.freq - self.cz
 
 			if self.calib_ctr > 0:
 				self.calib_ctr -= 1
@@ -144,9 +145,22 @@ class Orientation():
 					self.calib_data[2].append(dz)
 
 			# get cumulative sum
-			self.x.append(self.x[-1] + dx - self.cx)
-			self.y.append(self.y[-1] + dy - self.cy)
-			self.z.append(self.z[-1] + dz - self.cz)
+			self.x.append(self.x[-1] + dx)
+			self.y.append(self.y[-1] + dy)
+			self.z.append(self.z[-1] + dz)
+
+			# für jeden Drehratenvektor bezogen auf das körperfeste Koordinatensystem muss
+			# eine Drehmatrix aus den aktuellen Winkeln berechnet werden, mit welcher die Drehrate
+			# auf das raumfeste System umgerechnet werden kann.
+
+#			inertial = np.matrix([self.x[-1], self.y[-1], self.z[-1]]).T
+			Omega = np.matrix([dx, dy, dz]).T
+			M_RPY = get_matrix_RPY(self.roll[-1], self.pitch[-1], self.yaw[-1])
+			omega = M_RPY * Omega
+
+			self.roll.append(self.roll[-1] + omega[0].item())
+			self.pitch.append(self.pitch[-1] + omega[1].item())
+
 
 			if len(self.x) > 6000:
 #				self.status = self.status[-1000:]
@@ -160,8 +174,8 @@ class Orientation():
 
 			if self.ctr % 10 == 0: # update horizon
 				if not (status & 0xF0):
-					horizon.set_roll(self.x[-1])
-					horizon.set_pitch(self.y[-1])
+					horizon.set_roll(self.roll[-1])
+					horizon.set_pitch(self.pitch[-1])
 					horizon.redraw()
 
 				if self.ctr % 100 == 0: # update graph
@@ -193,6 +207,9 @@ class Orientation():
 		self.x = [0]
 		self.y = [0]
 		self.z = [0]
+		self.roll  = [0]
+		self.pitch = [0]
+		self.yaw   = [0]
 
 
 class Horizon(tk.Canvas):
