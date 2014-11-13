@@ -62,9 +62,13 @@ def initThreads():
 	logging.basicConfig(level=logging.INFO, format='(%(threadName)s) %(message)s')
 
 	win = tk.Tk()
-	win.title('Artificial Horizon')
-	horizon = Horizon(win)
-	horizon.pack()
+	win.title('Künstlicher Horizont | Lasse Fröhner, Seminar Maschinentechnik')
+
+	frame = tk.Frame(win, width=800, height=400)
+	frame.pack()
+
+	horizon = Horizon(frame)
+	horizon.pack(side=tk.LEFT)
 	logging.info('horizon initialized')
 
 	mp = MovingPlot(win)
@@ -77,11 +81,14 @@ def initThreads():
 	logging.info('UART thread started')
 
 	o = Orientation(plot=mp)
-	o.calibrate(10)
+	o.calibrate(20)
 	t_process = Thread(name="manage raw data", target=o.enqueue_raw_data, args=(q_raw,horizon))
 	t_process.setDaemon(True)
 	t_process.start()
 	logging.info('data processing thread started')
+
+	btn = tk.Button(frame, text="Reset", padx=10, command=o.reset)
+	btn.pack(side=tk.LEFT)
 
 #	tim_redraw = Timer(horizon.redraw, delay=0.1, running=True, repeat=True)
 #	tim_plot = Timer(o.plot, delay=1, running=True, repeat=True)
@@ -188,7 +195,7 @@ class Orientation():
 			ax = self.plotWindow.figure.axes[0]
 			ax.cla()
 			ax.set_xlim(0, 6000)
-#			ax.set_ylim(-180, 180)
+			ax.set_ylim(-90, 90)
 
 			df = DataFrame({'roll': self.x, 'pitch': self.y, 'yaw': self.z})
 #			logging.info(df.describe())
@@ -201,7 +208,7 @@ class Orientation():
 		self.calib_data = ([], [], [])
 		self.calib_ctr = s*self.freq
 		self.calib_goal = s*self.freq
-		logging.info('calibration initialized')
+		logging.info('calibration initialized, averaging over %i values' %(s*self.freq))
 
 	def reset(self):
 		self.x = [0]
@@ -210,6 +217,7 @@ class Orientation():
 		self.roll  = [0]
 		self.pitch = [0]
 		self.yaw   = [0]
+		logging.info('orientation reset')
 
 
 class Horizon(tk.Canvas):
@@ -285,6 +293,8 @@ def get_matrix_YPR(yaw, pitch, roll):
 def get_matrix_RPY(roll, pitch, yaw):
 	return get_matrix_YPR(yaw, pitch, roll).T
 
-
+def dummy(*args, **kwargs):
+	logging.info(args)
+	logging.info(kwargs)
 
 initThreads()
